@@ -1,6 +1,7 @@
 import { ANIMATION_SPEED, PIXEL_SIZE, ROTATION_SPEED } from "../../components/Game";
 import { MaskPoint, Point } from "./Point";
 import { calculateMidPoint, maskAndCircleIntersect, masksIntersect, rotatePoint, toPrecision } from "./math";
+import { createCircleVertices, drawShaders } from "./webgl";
 
 export class Board extends Array {
   objects: Map<string, number> = new Map();
@@ -29,7 +30,7 @@ export class GameObject {
   RI: Point;
   LF: Point;
   RF: Point;
-  color?: string;
+  color = [0, 0, 1];
   collision = false;
   collisionMask?: MaskPoint[];
   collisionPoints?: MaskPoint[];
@@ -39,13 +40,13 @@ export class GameObject {
   isCircle = false;
   layer = 0;
 
-  constructor(x: number, y: number, width: number, height: number, color?: string) {
+  constructor(x: number, y: number, width: number, height: number, color?: GLfloat[]) {
     this.id = Math.random().toString(36).substr(2, 9)
     this.LI = new Point(x, y)
     this.RI = new Point(x + width, y)
     this.LF = new Point(x, y + height)
     this.RF = new Point(x + width, y + height)
-    this.color = color;
+    if(color) this.color = color;
   }
 
   applyGravity(board: Board): boolean {
@@ -90,25 +91,17 @@ export class GameObject {
     return true
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = this.color || "red"
-    ctx.beginPath()
-    ctx.moveTo(this.LI.x * PIXEL_SIZE, this.LI.y * PIXEL_SIZE)
-    ctx.lineTo(this.RI.x * PIXEL_SIZE, this.RI.y * PIXEL_SIZE)
-    ctx.lineTo(this.RF.x * PIXEL_SIZE, this.RF.y * PIXEL_SIZE)
-    ctx.lineTo(this.LF.x * PIXEL_SIZE, this.LF.y * PIXEL_SIZE)
-    ctx.closePath()
-    ctx.fill()
-    if(!this.collision || !this.collisionMask) return
-    ctx.strokeStyle = "red"
-    ctx.lineWidth = 0.5
-    ctx.beginPath()
-    if(!this.collisionPoints) return
-    this.collisionPoints!.map(({ x, y }) => {
-      ctx.lineTo(x * PIXEL_SIZE, y * PIXEL_SIZE)
-    })
-    ctx.closePath()
-    ctx.stroke()
+  draw(gl: WebGLRenderingContext, positions?: Float32Array, numSegments = 2, mode: GLenum = gl.TRIANGLE_FAN) {
+    if(!gl) return
+    if(!positions) {
+      positions = new Float32Array([
+        this.LI.x * PIXEL_SIZE, this.LI.y * PIXEL_SIZE,
+        this.RI.x * PIXEL_SIZE, this.RI.y * PIXEL_SIZE,
+        this.RF.x * PIXEL_SIZE, this.RF.y * PIXEL_SIZE,
+        this.LF.x * PIXEL_SIZE, this.LF.y * PIXEL_SIZE
+      ])
+    }
+    drawShaders(gl, positions, this.color, numSegments, mode)
   }
   calculateAbsoluteRotation() {
     const firstMidPoint = calculateMidPoint(this.collisionPoints!, 2, 1)
@@ -178,31 +171,26 @@ export class GameObject {
 }
 
 export class Circle extends GameObject {
-  constructor(x: number, y: number, public radius: number = 0.2, color = "white") {
-    super(x, y, radius*2, radius*2, color)
+  constructor(x: number, y: number, public radius: number = 0.2, public color = [1, 1, 1]) {
+    super(x, y, radius*2, radius*2, [1, 1, 1])
 
     this.isCircle = true
   }
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = this.color || "red"
-    ctx.beginPath()
+  draw(gl: WebGLRenderingContext) {
     const [midX, midY] = calculateMidPoint([this.LI, this.RI, this.RF, this.LF], this.maxSection)
-    ctx.arc(midX * PIXEL_SIZE, midY * PIXEL_SIZE, this.radius*2 * PIXEL_SIZE / 2, 0, 2 * Math.PI)
-    ctx.fill()
-    ctx.strokeStyle = "red"
-    ctx.lineWidth = 0.5
-    ctx.beginPath()
-    if(!this.collision) return
-    ctx.arc(midX * PIXEL_SIZE, midY * PIXEL_SIZE, this.radius*2 * PIXEL_SIZE / 2, 0, 2 * Math.PI)
-    ctx.stroke()
-    ctx.closePath()
+    const radius = this.radius * PIXEL_SIZE
+    const centerX = midX * PIXEL_SIZE
+    const centerY = midY * PIXEL_SIZE
+    const numSegments = 50
+    const vertices = createCircleVertices(centerX, centerY, radius, numSegments)
+    super.draw(gl, vertices, numSegments)
   }
 }
 
 export class Hole extends Circle {
   layer = 998
   constructor(x: number, y: number, public hasScrew = false) {
-    super(x, y, 0.2, "black")
+    super(x, y, 0.2, [0, 0, 0])
   }
 }
 
@@ -219,8 +207,8 @@ export class Bar extends GameObject {
   layer = 999
   holes = new Map<number, boolean>();
   size: number;
-  constructor(x: number, y: number, holes: number[], public board?: Board, rotation = 0, color = "green") {
-    super(x, y, holes.length, 1, color)
+  constructor(x: number, y: number, holes: number[], public board?: Board, rotation = 0, public color = [0, 0.5, 0]) {
+    super(x, y, holes.length, 1)
     this.gravity = true
     this.size = holes.length
     this.collision = true
@@ -242,15 +230,12 @@ export class Bar extends GameObject {
       }
     })
   }
-  draw(ctx: CanvasRenderingContext2D) {
-    super.draw(ctx)
-    ctx.fillStyle = "yellow"
+  draw(gl: WebGLRenderingContext) {
+    super.draw(gl)
     for(const key of this.holes.keys()) {
       const [midX, midY] = calculateMidPoint([this.LI, this.RI, this.RF, this.LF], this.size, key+1)
-      ctx.beginPath()
-      ctx.arc(midX * PIXEL_SIZE, midY * PIXEL_SIZE, 0.2 * PIXEL_SIZE, 0, 2*Math.PI)
-      ctx.closePath()
-      ctx.fill()
+      const vertices = createCircleVertices(midX * PIXEL_SIZE, midY * PIXEL_SIZE, 0.2 * PIXEL_SIZE, 100)
+      drawShaders(gl, vertices, [0, 0, 0], 100, gl.TRIANGLE_FAN)
     }
   }
   rotate(grades: number, index?: number, rotCx?: number, rotCy?: number) {

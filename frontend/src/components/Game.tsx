@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import { Bar, Board, Hole, Screw } from "../utils/game/objects"
 import { calculateMidPoint, pointInPolygon } from "../utils/game/math"
 import { Point } from "../utils/game/Point"
+import { initWebGL } from "../utils/game/webgl"
 
-export const PIXEL_SIZE = 80
+export const PIXEL_SIZE = 80//innerWidth * devicePixelRatio / 8
 export const ROTATION_SPEED = 1.5
 export const ANIMATION_SPEED = 6
 
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
-  const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null)
+  const [gl, setgl] = useState<WebGLRenderingContext | null>(null)
   const [currentScrew, setCurrentScrew] = useState<Screw | null>(null)
   const [board] = useState<Board>(new Board())
 
@@ -29,27 +30,30 @@ export default function Game() {
 
   useEffect(() => {
     if (!canvas) return
-    setCtx(canvas.getContext("2d"))
+    setgl(canvas.getContext("webgl", { antialias: true })!)
   }, [canvas])
 
   function render() {
-    if (!ctx || !canvas) return
-    ctx.fillStyle = "blue"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    if (!gl || !canvas) return
+    gl.viewport(0, 0, canvas.width, canvas.height)
+    gl.clearColor(0, 0, 0, 0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
     board.sortByLayer().map(obj => {
-      obj.draw(ctx)
+      if(!gl) return
+      obj.draw(gl)
       obj.applyGravity(board, render)
     })
     requestAnimationFrame(render)
   }
   useEffect(() => {
+    if(gl) initWebGL(gl)
     render()
-  }, [ctx])
+  }, [gl])
 
   function insertScrew(obj: Hole) {
     if (!currentScrew) return
     if (obj.detectCollision(board)[0]) return
-    currentScrew.color = "white"
+    currentScrew.color = [1, 1, 1]
     currentScrew.LI = { x: obj.LI.x, y: obj.LI.y }
     currentScrew.RI = { x: obj.RI.x, y: obj.RI.y }
     currentScrew.LF = { x: obj.LF.x, y: obj.LF.y }
@@ -75,12 +79,12 @@ export default function Game() {
     if (objs[0].constructor.name != "Screw" && objs[0].constructor.name != "Hole" && objs[0].constructor.name != "Bar") return
     if (objs[0].constructor.name == "Screw") {
       const obj = objs[0] as Screw
-      obj.color = "red"
+      obj.color = [1, 0, 0]
       if (obj == currentScrew) {
-        currentScrew!.color = "white"
+        currentScrew!.color = [1, 1, 1]
         return setCurrentScrew(null);;;
       }
-      if (currentScrew) currentScrew!.color = "white"
+      if (currentScrew) currentScrew!.color = [1, 1, 1]
       setCurrentScrew(obj)
     }
     else if (objs[0].constructor.name == "Bar") {
@@ -106,7 +110,7 @@ export default function Game() {
 
   return (
     <div>
-      <canvas onClick={handleClick} width={PIXEL_SIZE * 8} height={PIXEL_SIZE * 8} ref={canvasRef} ></canvas>
+      <canvas style={{backgroundColor: '#00F'}} onClick={handleClick} width={PIXEL_SIZE * 8} height={PIXEL_SIZE * 8} ref={canvasRef} ></canvas>
     </div>
   )
 }
