@@ -17,8 +17,8 @@ Feel free to add any issue, pull request or feedback. I hope this is useful for 
     - [ ] Levels functionality
   - [ ] Build ML service to test levels
 - Frontend
- - [ ] Build user interface
- - [ ] Connect to API
- - [ ] Add sprites
- - [ ] Improve math algorithms
- - [ ] Fix collision bugs
+  - [ ] Build user interface
+  - [ ] Connect to API
+  - [ ] Add sprites
+  - [ ] Improve math algorithms
+  - [ ] Fix collision bugs
