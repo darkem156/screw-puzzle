@@ -5,15 +5,35 @@ import { createCircleVertices, drawShaders } from "./webgl";
 
 export class Board extends Array {
   objects: Map<string, number> = new Map();
+  barsNumber = 0;
+  setBarsNumber?: (bars: number) => void;
   push(...items: GameObject[]) {
-    items.map((item, index) => this.objects.set(item.id, index + this.length))
+    items.map((item, index) => {
+      if(item instanceof Bar) {
+        this.barsNumber++
+      }
+      this.objects.set(item.id, index + this.length)
+    })
+    if(this.setBarsNumber) this.setBarsNumber(this.barsNumber)
     return super.push(...items)
+  }
+  clear() {
+    this.splice(0, this.length)
+    this.objects.clear()
+  }
+  add(callBack: (board: Board) => void) {
+    callBack(this)
+    return this
   }
   remove(item: GameObject) {
     const index = this.objects.get(item.id)
     if(index === undefined) return
     this.splice(index, 1)
     this.objects.delete(item.id)
+    if(item instanceof Bar) {
+      this.barsNumber--
+      if(this.setBarsNumber) this.setBarsNumber(this.barsNumber)
+    }
     this.objects.forEach((value, key) => {
       if(value > index) this.objects.set(key, value - 1)
     })
@@ -21,6 +41,9 @@ export class Board extends Array {
   sortByLayer() {
     const copy = this.slice()
     return copy.sort((a, b) => a.layer - b.layer)
+  }
+  getState(setBoardReady: (ready: boolean) => void) {
+    setBoardReady(true)
   }
 }
 
