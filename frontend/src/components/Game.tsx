@@ -8,7 +8,7 @@ export const PIXEL_SIZE = window.innerHeight < window.innerWidth ? window.innerH
 export const ROTATION_SPEED = 1.5
 export const ANIMATION_SPEED = 6
 
-export default function Game({ board, setCurrentLevel, levelName }: { levelName: string, board: Board, setCurrentLevel: (level: number | ((current: number) => number)) => void }) {
+export default function Game({ board, setCurrentLevel, setWin }: { levelName: string, board: Board, setCurrentLevel: (level: number | ((current: number) => number)) => void, setWin: (win: boolean) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const [gl, setgl] = useState<WebGLRenderingContext | null>(null)
@@ -23,10 +23,7 @@ export default function Game({ board, setCurrentLevel, levelName }: { levelName:
 
   useEffect(() => {
     if(barsNumber == 0 && boardReady) {
-      setCurrentLevel((current: number) => {
-        console.log(current)
-        return current + 1
-      })
+      setWin(true)
     }
   }, [barsNumber, setCurrentLevel, boardReady])
 
@@ -116,9 +113,6 @@ export default function Game({ board, setCurrentLevel, levelName }: { levelName:
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-4">
-        <p className="text-2xl"><b>Level:</b> <span className="font-extrabold">{levelName}</span></p>
-      </div>
       <canvas className="bg-orange-700 rounded-lg" onClick={handleClick} width={PIXEL_SIZE * 8} height={PIXEL_SIZE * 8} ref={canvasRef} ></canvas>
     </div>
   )

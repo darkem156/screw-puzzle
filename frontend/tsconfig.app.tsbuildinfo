@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/Game.tsx","./src/components/Levels.tsx","./src/components/Pause.tsx","./src/components/Timer.tsx","./src/utils/game/Point.ts","./src/utils/game/levels.ts","./src/utils/game/math.ts","./src/utils/game/objects.ts","./src/utils/game/webgl.ts"],"errors":true,"version":"5.8.3"}

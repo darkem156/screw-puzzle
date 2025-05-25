@@ -1,13 +1,15 @@
-import { useState } from "react"
 import Game from "./components/Game"
 import { createLevel, levels } from "./utils/game/levels"
 import { Levels } from "./components/Levels"
+import Pause from "./components/Pause"
+import { useState } from "react"
 
 function App() {
   const [playing, setPlaying] = useState(false)
   const [resetKey, setResetKey] = useState(0)
   const [currentLevel, setCurrentLevel] = useState(0)
   const [showLevels, setShowLevels] = useState(false)
+  const [win, setWin] = useState(false)
 
   return (
     <>
@@ -17,13 +19,10 @@ function App() {
       ">
         { playing ?
           <div className="flex flex-col gap-4">
-            <div className="flex gap-8">
-              <button onClick={() => setResetKey(Number(!resetKey))}>Reload</button>
-              <button onClick={() => setPlaying(false)}>Back</button>
-            </div>
+            <Pause win={win} setWin={setWin} currentLevel={currentLevel} setResetKey={setResetKey} resetKey={resetKey} setPlaying={setPlaying} setCurrentLevel={setCurrentLevel} />
             {
               currentLevel < levels.length
-              ? <Game key={resetKey} levelName={(currentLevel+1).toString()} board={createLevel(levels[currentLevel])} setCurrentLevel={setCurrentLevel} />
+              ? <Game setWin={setWin} key={resetKey} levelName={(currentLevel+1).toString()} board={createLevel(levels[currentLevel])} setCurrentLevel={setCurrentLevel} />
                 : <div className="flex flex-col gap-4">
                     <h1 className="text-2xl font-semibold text-center">Congratulations! You finished the game</h1>
                     <div className="flex gap-4">
